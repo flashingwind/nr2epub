@@ -1,0 +1,209 @@
+@charset "UTF-8";
+
+/* 縦書き設定 */
+html {
+  writing-mode: vertical-rl;
+  -webkit-writing-mode: vertical-rl;
+  -epub-writing-mode: vertical-rl;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  line-height: 1.8;
+  font-size: 100%;
+}
+
+/* ルビ */
+ruby {
+  ruby-position: over;
+}
+
+rt {
+  font-size: 0.5em;
+}
+
+/* 傍点 */
+.emphasis {
+  text-emphasis-style: filled sesame;
+  -webkit-text-emphasis-style: filled sesame;
+  text-emphasis-position: over right;
+  -webkit-text-emphasis-position: over right;
+}
+
+/* 縦中横（1～4桁の数字） */
+.tcy {
+  -webkit-text-combine: horizontal;
+  -webkit-text-combine-upright: all;
+  text-combine-upright: all;
+  -epub-text-combine: horizontal;
+}
+
+/* 表紙 */
+.cover {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 1em;
+}
+
+.cover-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.cover-title {
+  font-size: 2em;
+  font-weight: bold;
+  margin: 1em 0 0 0;
+  padding: 0;
+}
+
+.cover-author {
+  font-size: 1.2em;
+  margin: 0 0 1em 0;
+  padding: 0;
+}
+
+/* タイトルページ */
+.titlepage {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 1em;
+}
+
+.title-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.main-title {
+  font-size: 2.5em;
+  font-weight: bold;
+  margin: 1em 0 0 0;
+  padding: 0;
+}
+
+.main-author {
+  font-size: 1.5em;
+  margin: 0 0 1em 0;
+  padding: 0;
+}
+
+.summary {
+  font-size: 1em;
+  text-align: left;
+  margin: 2em;
+  line-height: 2;
+}
+
+/* 章 */
+.chapter {
+  margin: 0;
+  padding: 1em;
+}
+
+.chapter-content {
+  margin: 0;
+}
+
+.chapter-title {
+  font-size: 1.5em;
+  font-weight: bold;
+  text-align: center;
+  margin: 0 0 2em 0;
+  padding-bottom: 0.5em;
+}
+
+.section-title {
+  font-size: 1.1em;
+  font-weight: bold;
+  margin: 0 0 1em 0;
+}
+
+/* 前書き */
+.preface {
+  margin: 2em;
+  padding: 1.5em;
+  border: 1px solid #999;
+  background-color: #f5f5f5;
+}
+
+/* 本文 */
+.main-text {
+  margin: 0;
+}
+
+.main-text p {
+  margin: 0;
+  text-indent: 1em;
+  text-align: justify;
+}
+
+.main-text img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em auto;
+}
+
+/* 後書き */
+.afterword {
+  margin: 2em;
+  padding: 1.5em;
+  border: 1px solid #999;
+  background-color: #f5f5f5;
+}
+
+/* 段落 */
+p {
+  margin: 0;
+  text-align: justify;
+}
+
+.preface p,
+.afterword p {
+  margin: 0;
+  text-indent: 1em;
+  text-align: justify;
+}
+
+/* 改ページ */
+.pagebreak {
+  page-break-before: always;
+  break-before: page;
+}
+
+/* 目次 */
+#toc h1 {
+  font-size: 2em;
+  text-align: center;
+  margin: 2em 0;
+}
+
+#toc ol {
+  list-style-type: none;
+  padding: 0;
+  margin: 0 2em;
+}
+
+#toc li {
+  margin: 0.5em 0;
+  line-height: 1.5;
+}
+
+#toc a {
+  text-decoration: none;
+  color: #333;
+}
+
+#toc a:hover {
+  text-decoration: underline;
+}

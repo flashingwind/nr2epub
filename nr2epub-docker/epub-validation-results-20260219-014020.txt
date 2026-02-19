@@ -1,0 +1,7 @@
+Validating using EPUB version 3.2 rules.
+ERROR(OPF-073): ./tmp/epub-validation-3036716/test.epub/OEBPS/toc.ncx(2,100): External identifiers must not appear in the document type declaration.
+
+Check finished with errors
+Messages: 0 fatals / 1 error / 0 warnings / 0 infos
+
+EPUBCheck completed

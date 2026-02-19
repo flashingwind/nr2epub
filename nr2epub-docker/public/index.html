@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nr2epub</title>
+    <style>
+      body {
+        font-family: "Noto Sans JP", "Hiragino Kaku Gothic Pro", "Meiryo", sans-serif;
+        margin: 32px;
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+      label {
+        display: block;
+        margin: 12px 0 6px;
+      }
+      input, button {
+        font-size: 16px;
+        padding: 8px 10px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 12px;
+        margin-right: 8px;
+      }
+      .button-group {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .button-group button {
+        flex: 1;
+        margin: 0;
+      }
+      pre {
+        background: #f5f5f5;
+        padding: 12px;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .settings-section {
+        margin-top: 48px;
+        padding-top: 24px;
+        border-top: 2px solid #ddd;
+      }
+      .settings-section h2 {
+        font-size: 1.2em;
+        margin-bottom: 12px;
+      }
+      .settings-buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .settings-buttons button {
+        flex: 1;
+        margin: 0;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>nr2epub - EPUB生成</h1>
+      <p>なろう作品URLを入力して、EPUB生成またはメール送信を行います。</p>
+      
+      <label for="work-url">作品URL</label>
+      <input id="work-url" placeholder="https://ncode.syosetu.com/xxxxxx/" />
+      <button id="extract-button">話ページを抽出</button>
+
+      <label for="episodes">話番号（カンマ区切りまたは範囲: 1,2,3 または 1-10）</label>
+      <input id="episodes" placeholder="1-50" />
+      
+      <label for="epub-author">著者名（ファイル名用）</label>
+      <input id="epub-author" placeholder="著者名" />
+      
+      <label for="epub-title">タイトル（ファイル名用）</label>
+      <input id="epub-title" placeholder="タイトル" />
+      
+      <label for="mail-recipient">送信先メールアドレス（メール送信時のみ）</label>
+      <input id="mail-recipient" placeholder="you@example.com" />
+      
+      <details style="margin-top: 16px;">
+        <summary style="cursor: pointer; font-weight: bold;">📧 SMTP設定（メール送信用）</summary>
+        <div style="margin-top: 12px; padding: 12px; background: #f9f9f9; border-radius: 4px;">
+          <label for="smtp-host" style="margin-top: 8px;">SMTPホスト</label>
+          <input id="smtp-host" placeholder="smtp.gmail.com" />
+          
+          <label for="smtp-port" style="margin-top: 8px;">SMTPポート</label>
+          <input id="smtp-port" type="number" placeholder="587" />
+          
+          <label for="smtp-user" style="margin-top: 8px;">SMTPユーザー名（メールアドレス）</label>
+          <input id="smtp-user" placeholder="your-email@gmail.com" />
+          
+          <label for="smtp-pass" style="margin-top: 8px;">SMTPパスワード（アプリパスワード）</label>
+          <input id="smtp-pass" type="password" placeholder="アプリパスワード" />
+          
+          <div style="margin-top: 8px;">
+            <label>
+              <input type="checkbox" id="smtp-secure" />
+              SSL/TLS接続を使用 (通常はポート465の場合にチェック)
+            </label>
+          </div>
+          
+          <p style="font-size: 0.85em; color: #666; margin-top: 8px;">
+            💡 Gmailの場合: <a href="https://myaccount.google.com/apppasswords" target="_blank">アプリパスワード</a>を生成してください
+          </p>
+        </div>
+      </details>
+      
+      <div class="button-group">
+        <button id="download-button">EPUBをダウンロード</button>
+        <button id="mail-button">EPUBをメールで送信</button>
+      </div>
+      
+      <pre id="output"></pre>
+
+      <div class="settings-section">
+        <h2>⚙️ 設定管理</h2>
+        <p style="font-size: 0.9em; color: #666;">設定はブラウザに自動保存されます。</p>
+        <div class="settings-buttons">
+          <button id="export-button">設定をエクスポート</button>
+          <button id="import-button">設定をインポート</button>
+          <button id="clear-button">設定をクリア</button>
+        </div>
+        <input type="file" id="import-file" class="hidden" accept=".json" />
+      </div>
+    </div>
+    <script>
+      const workUrlInput = document.getElementById("work-url");
+      const episodesInput = document.getElementById("episodes");
+      const epubAuthorInput = document.getElementById("epub-author");
+      const epubTitleInput = document.getElementById("epub-title");
+      const mailRecipientInput = document.getElementById("mail-recipient");
+      const smtpHostInput = document.getElementById("smtp-host");
+      const smtpPortInput = document.getElementById("smtp-port");
+      const smtpUserInput = document.getElementById("smtp-user");
+      const smtpPassInput = document.getElementById("smtp-pass");
+      const smtpSecureInput = document.getElementById("smtp-secure");
+      const extractButton = document.getElementById("extract-button");
+      const downloadButton = document.getElementById("download-button");
+      const mailButton = document.getElementById("mail-button");
+      const output = document.getElementById("output");
+      const exportButton = document.getElementById("export-button");
+      const importButton = document.getElementById("import-button");
+      const clearButton = document.getElementById("clear-button");
+      const importFile = document.getElementById("import-file");
+      
+      const apiBase = window.location.origin === "null" ? "http://localhost:3000" : "";
+
+      // 設定の保存と読み込み
+      const SETTINGS_KEY = "nr2epub_settings";
+      
+      function saveSettings() {
+        const settings = {
+          mailRecipient: mailRecipientInput.value,
+          epubAuthor: epubAuthorInput.value,
+          epubTitle: epubTitleInput.value,
+          lastWorkUrl: workUrlInput.value,
+          lastEpisodes: episodesInput.value,
+          smtp: {
+            host: smtpHostInput.value,
+            port: smtpPortInput.value,
+            user: smtpUserInput.value,
+            pass: smtpPassInput.value,
+            secure: smtpSecureInput.checked
+          }
+        };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      }
+      
+      function loadSettings() {
+        try {
+          const saved = localStorage.getItem(SETTINGS_KEY);
+          if (saved) {
+            const settings = JSON.parse(saved);
+            if (settings.mailRecipient) mailRecipientInput.value = settings.mailRecipient;
+            if (settings.epubAuthor) epubAuthorInput.value = settings.epubAuthor;
+            if (settings.epubTitle) epubTitleInput.value = settings.epubTitle;
+            if (settings.lastWorkUrl) workUrlInput.value = settings.lastWorkUrl;
+            if (settings.lastEpisodes) episodesInput.value = settings.lastEpisodes;
+            if (settings.smtp) {
+              if (settings.smtp.host) smtpHostInput.value = settings.smtp.host;
+              if (settings.smtp.port) smtpPortInput.value = settings.smtp.port;
+              if (settings.smtp.user) smtpUserInput.value = settings.smtp.user;
+              if (settings.smtp.pass) smtpPassInput.value = settings.smtp.pass;
+              if (settings.smtp.secure !== undefined) smtpSecureInput.checked = settings.smtp.secure;
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load settings:", err);
+        }
+      }
+      
+      function exportSettings() {
+        const settings = {
+          mailRecipient: mailRecipientInput.value,
+          epubAuthor: epubAuthorInput.value,
+          epubTitle: epubTitleInput.value,
+          lastWorkUrl: workUrlInput.value,
+          lastEpisodes: episodesInput.value,
+          smtp: {
+            host: smtpHostInput.value,
+            port: smtpPortInput.value,
+            user: smtpUserInput.value,
+            pass: smtpPassInput.value,
+            secure: smtpSecureInput.checked
+          },
+          exportedAt: new Date().toISOString()
+        };
+        const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `nr2epub_settings_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        output.textContent = "✅ 設定をエクスポートしました";
+      }
+      
+      function importSettings(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const settings = JSON.parse(e.target.result);
+            if (settings.mailRecipient) mailRecipientInput.value = settings.mailRecipient;
+            if (settings.epubAuthor) epubAuthorInput.value = settings.epubAuthor;
+            if (settings.epubTitle) epubTitleInput.value = settings.epubTitle;
+            if (settings.lastWorkUrl) workUrlInput.value = settings.lastWorkUrl;
+            if (settings.lastEpisodes) episodesInput.value = settings.lastEpisodes;
+            if (settings.smtp) {
+              if (settings.smtp.host) smtpHostInput.value = settings.smtp.host;
+              if (settings.smtp.port) smtpPortInput.value = settings.smtp.port;
+              if (settings.smtp.user) smtpUserInput.value = settings.smtp.user;
+              if (settings.smtp.pass) smtpPassInput.value = settings.smtp.pass;
+              if (settings.smtp.secure !== undefined) smtpSecureInput.checked = settings.smtp.secure;
+            }
+            saveSettings();
+            output.textContent = `✅ 設定をインポートしました${settings.exportedAt ? ' (エクスポート日: ' + new Date(settings.exportedAt).toLocaleString() + ')' : ''}`;
+          } catch (err) {
+            output.textContent = `エラー: 設定ファイルの読み込みに失敗しました - ${err.message}`;
+          }
+        };
+        reader.readAsText(file);
+      }
+      
+      function clearSettings() {
+        if (confirm("すべての設定をクリアしますか？")) {
+          localStorage.removeItem(SETTINGS_KEY);
+          mailRecipientInput.value = "";
+          epubAuthorInput.value = "";
+          epubTitleInput.value = "";
+          smtpHostInput.value = "";
+          smtpPortInput.value = "";
+          smtpUserInput.value = "";
+          smtpPassInput.value = "";
+          smtpSecureInput.checked = false;
+          output.textContent = "✅ 設定をクリアしました";
+        }
+      }
+      
+      // 設定ボタンのイベント
+      exportButton.addEventListener("click", exportSettings);
+      importButton.addEventListener("click", () => importFile.click());
+      importFile.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+          importSettings(e.target.files[0]);
+          e.target.value = "";
+        }
+      });
+      clearButton.addEventListener("click", clearSettings);
+      
+      // 入力変更時に自動保存
+      mailRecipientInput.addEventListener("input", saveSettings);
+      workUrlInput.addEventListener("input", saveSettings);
+      episodesInput.addEventListener("input", saveSettings);
+      smtpHostInput.addEventListener("input", saveSettings);
+      smtpPortInput.addEventListener("input", saveSettings);
+      smtpUserInput.addEventListener("input", saveSettings);
+      smtpPassInput.addEventListener("input", saveSettings);
+      smtpSecureInput.addEventListener("change", saveSettings);
+      
+      // ページ読み込み時に設定を復元
+      loadSettings();
+
+      const postJson = async (path, body) => {
+        const res = await fetch(`${apiBase}${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        return res;
+      };
+
+      const readResponseJson = async (res) => {
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch {
+          return { raw: text };
+        }
+      };
+
+      extractButton.addEventListener("click", async () => {
+        const url = workUrlInput.value.trim();
+        if (!url) {
+          output.textContent = "URLを入力してください";
+          return;
+        }
+        output.textContent = "loading...";
+        try {
+          const res = await postJson("/api/parse-work", { url });
+          const json = await readResponseJson(res);
+          
+          if (json.data) {
+            // 著者名とタイトルを毎回更新（前の値は上書き）
+            epubAuthorInput.value = json.data.author || "";
+            epubTitleInput.value = json.data.title || "";
+            
+            const episodeCount = json.data.maxEpisode > 0 ? json.data.maxEpisode : (json.data.episodes?.length || 0);
+            if (episodeCount > 0) {
+              episodesInput.value = `1-${episodeCount}`;
+              output.textContent = `抽出成功！話数: ${episodeCount}`;
+            } else {
+              output.textContent = `抽出完了（話数不明）`;
+            }
+            saveSettings();
+          }
+        } catch (err) {
+          output.textContent = `エラー: ${err.message || err}`;
+        }
+      });
+      
+      const parseEpisodeNumbers = (input) => {
+        const numbers = [];
+        const parts = input.split(",").map(p => p.trim());
+        for (const part of parts) {
+          if (part.includes("-")) {
+            const [start, end] = part.split("-").map(n => parseInt(n, 10));
+            if (!isNaN(start) && !isNaN(end)) {
+              for (let i = start; i <= end; i++) {
+                numbers.push(i);
+              }
+            }
+          } else {
+            const num = parseInt(part, 10);
+            if (!isNaN(num)) numbers.push(num);
+          }
+        }
+        return numbers;
+      };
+
+      const buildEpisodeUrls = (workUrl, requestedEpisodes, allEpisodes) => {
+        const baseUrl = workUrl.endsWith('/') ? workUrl.slice(0, -1) : workUrl;
+        const isNarouNumbered = /^https?:\/\/(ncode|novel18)\.syosetu\.com\/[^/]+\/?$/.test(workUrl);
+
+        return requestedEpisodes
+          .map((episodeNum) => {
+            const byIndex = allEpisodes[episodeNum - 1]?.url;
+            if (byIndex) return byIndex;
+
+            const byEpisodeField = allEpisodes.find(ep => ep?.episode === episodeNum)?.url;
+            if (byEpisodeField) return byEpisodeField;
+
+            if (isNarouNumbered) {
+              return `${baseUrl}/${episodeNum}/`;
+            }
+
+            return null;
+          })
+          .filter(Boolean);
+      };
+      
+      downloadButton.addEventListener("click", async () => {
+        const url = workUrlInput.value.trim();
+        const episodeStr = episodesInput.value.trim();
+        
+        if (!url) {
+          output.textContent = "作品URLを入力してください";
+          return;
+        }
+        if (!episodeStr) {
+          output.textContent = "話番号を入力してください（または抽出ボタンで自動入力）";
+          return;
+        }
+        
+        output.textContent = "作品情報を取得中...";
+        try {
+          const res = await postJson("/api/parse-work", { url });
+          const workData = await readResponseJson(res);
+          
+          if (!workData.data) {
+            output.textContent = "作品情報の取得に失敗しました";
+            return;
+          }
+          
+          const episodes = parseEpisodeNumbers(episodeStr);
+          const allEpisodes = workData.data.episodes || [];
+          const episodeUrls = buildEpisodeUrls(url, episodes, allEpisodes);
+          
+          if (episodeUrls.length === 0) {
+            output.textContent = "話番号が指定されていません";
+            return;
+          }
+
+          if (episodeUrls.length !== episodes.length) {
+            output.textContent = `❌ 指定 ${episodes.length} 話のうちURLを解決できたのは ${episodeUrls.length} 話です。話番号指定を確認してください。`;
+            return;
+          }
+          
+          // 著者名とタイトルを取得
+          const author = epubAuthorInput.value.trim() || workData.data.author || "Unknown";
+          const title = epubTitleInput.value.trim() || workData.data.title || "Untitled";
+          
+          output.textContent = `EPUB生成ジョブを開始中... (${episodeUrls.length}話予定)`;
+          
+          // /api/generate-epub でダウンロードモード(sendEmail=false)で呼び出し
+          const downloadRes = await postJson("/api/generate-epub", {
+            workUrl: url,
+            episodeUrls,
+            author,
+            title,
+            sendEmail: false
+          });
+          const downloadData = await readResponseJson(downloadRes);
+          
+          if (downloadRes.status === 202 && downloadData.jobId) {
+            // ジョブが開始された - ポーリングで進捗を確認
+            const jobId = downloadData.jobId;
+            let completed = false;
+            
+            while (!completed) {
+              await new Promise(resolve => setTimeout(resolve, 500)); // 0.5秒ごとにポーリング
+              
+              const progressRes = await fetch(`${apiBase}/api/job-progress/${jobId}`, { cache: "no-store" });
+              if (!progressRes.ok) {
+                output.textContent = "進捗確認に失敗しました";
+                break;
+              }
+              
+              const progress = await progressRes.json();
+              if (progress.status === "processing") {
+                output.textContent = `${progress.message || "EPUB生成中..."} (${progress.progress}/${progress.total}話)`;
+              } else {
+                output.textContent = `${progress.message || `EPUB生成中... ${progress.progress}/${progress.total}話`}`;
+              }
+              
+              if (progress.status === "completed") {
+                output.textContent = `EPUB生成完了。ダウンロード中...`;
+                saveSettings();
+                
+                // EPUB をダウンロード
+                try {
+                  const epubRes = await fetch(`${apiBase}/api/download/${jobId}`);
+                  if (!epubRes.ok) {
+                    output.textContent = `❌ ダウンロード失敗: ${epubRes.status}`;
+                    completed = true;
+                    return;
+                  }
+                  
+                  const blob = await epubRes.blob();
+                  const downloadUrl = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = downloadUrl;
+
+                  const contentDisposition = epubRes.headers.get('content-disposition') || '';
+                  let headerFilename = '';
+                  const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+                  if (filenameMatch && filenameMatch[1]) {
+                    try {
+                      headerFilename = decodeURI(filenameMatch[1]);
+                    } catch {
+                      headerFilename = filenameMatch[1];
+                    }
+                  }
+
+                  const fallbackFilename = author && author.trim()
+                    ? `[${author}]${title}.epub`
+                    : `${title}.epub`;
+                  link.download = headerFilename || progress.filename || fallbackFilename;
+                  link.click();
+                  URL.revokeObjectURL(downloadUrl);
+                  
+                  output.textContent = `✅ ${progress.message || `EPUB ダウンロード完了 (${progress.total}話)`}`;
+                } catch (downloadErr) {
+                  output.textContent = `❌ ダウンロード中にエラー: ${downloadErr.message}`;
+                }
+                
+                completed = true;
+              } else if (progress.status === "error") {
+                output.textContent = `❌ エラー: ${progress.error || "不明なエラー"}`;
+                completed = true;
+              }
+            }
+          } else {
+            const error = downloadData.error || "不明なエラー";
+            output.textContent = `生成エラー: ${error}`;
+          }
+        } catch (err) {
+          output.textContent = `エラー: ${err.message || err}`;
+        }
+      });
+      
+      mailButton.addEventListener("click", async () => {
+        const url = workUrlInput.value.trim();
+        const episodeStr = episodesInput.value.trim();
+        const mailRecipient = mailRecipientInput.value.trim();
+        
+        if (!url) {
+          output.textContent = "作品URLを入力してください";
+          return;
+        }
+        if (!episodeStr) {
+          output.textContent = "話番号を入力してください（または抽出ボタンで自動入力）";
+          return;
+        }
+        if (!mailRecipient) {
+          output.textContent = "メールアドレスを入力してください";
+          return;
+        }
+        
+        // SMTP設定の取得
+        const smtp = smtpHostInput.value && smtpUserInput.value && smtpPassInput.value ? {
+          host: smtpHostInput.value || "smtp.gmail.com",
+          port: parseInt(smtpPortInput.value) || 587,
+          user: smtpUserInput.value,
+          pass: smtpPassInput.value,
+          secure: smtpSecureInput.checked
+        } : undefined;
+        
+        if (!smtp) {
+          output.textContent = "SMTP設定を入力してください。「📧 SMTP設定」を開いて情報を入力してください。";
+          return;
+        }
+        
+        output.textContent = "作品情報を取得中...";
+        try {
+          const res = await postJson("/api/parse-work", { url });
+          const workData = await readResponseJson(res);
+          
+          if (!workData.data) {
+            output.textContent = "作品情報の取得に失敗しました";
+            return;
+          }
+          
+          const episodes = parseEpisodeNumbers(episodeStr);
+          const allEpisodesMail = workData.data.episodes || [];
+          const episodeUrls = buildEpisodeUrls(url, episodes, allEpisodesMail);
+          
+          if (episodeUrls.length === 0) {
+            output.textContent = "話番号が指定されていません";
+            return;
+          }
+
+          if (episodeUrls.length !== episodes.length) {
+            output.textContent = `❌ 指定 ${episodes.length} 話のうちURLを解決できたのは ${episodeUrls.length} 話です。話番号指定を確認してください。`;
+            return;
+          }
+          
+          // 著者名とタイトルを取得
+          const author = epubAuthorInput.value.trim() || workData.data.author || "Unknown";
+          const title = epubTitleInput.value.trim() || workData.data.title || "Untitled";
+          
+          output.textContent = `EPUB生成・送信ジョブを開始中... (${episodeUrls.length}話予定)`;
+          
+          // /api/generate-epub でメール送信モードで呼び出し
+          const mailRes = await postJson("/api/generate-epub", {
+            workUrl: url,
+            episodeUrls,
+            author,
+            title,
+            sendEmail: true,
+            smtp,
+            recipient: mailRecipient
+          });
+          const mailData = await readResponseJson(mailRes);
+          
+          if (mailRes.status === 202 && mailData.jobId) {
+            // ジョブが開始された - ポーリングで進捗を確認
+            const jobId = mailData.jobId;
+            let completed = false;
+            
+            while (!completed) {
+              await new Promise(resolve => setTimeout(resolve, 500)); // 0.5秒ごとにポーリング
+              
+              const progressRes = await fetch(`${apiBase}/api/job-progress/${jobId}`, { cache: "no-store" });
+              if (!progressRes.ok) {
+                output.textContent = "進捗確認に失敗しました";
+                break;
+              }
+              
+              const progress = await progressRes.json();
+              if (progress.status === "processing") {
+                output.textContent = `${progress.message || "EPUB生成・送信中..."} (${progress.progress}/${progress.total}話)`;
+              } else {
+                output.textContent = `${progress.message || `EPUB生成・送信中... ${progress.progress}/${progress.total}話`}`;
+              }
+              
+              if (progress.status === "completed") {
+                output.textContent = `✅ ${progress.message || `メール送信完了 (${progress.total}話)`}`;
+                saveSettings();
+                completed = true;
+              } else if (progress.status === "error") {
+                output.textContent = `❌ エラー: ${progress.error || "不明なエラー"}`;
+                completed = true;
+              }
+            }
+          } else {
+            const errorMsg = mailData.error || "不明なエラー";
+            const detailMsg = mailData.message ? `\n\n${mailData.message}` : "";
+            output.textContent = `送信エラー: ${errorMsg}${detailMsg}`;
+          }
+        } catch (err) {
+          output.textContent = `エラー: ${err.message || err}`;
+        }
+      });
+    </script>
+  </body>
+</html>

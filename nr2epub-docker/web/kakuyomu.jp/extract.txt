@@ -1,0 +1,40 @@
+################################
+### カクヨム
+### https://kakuyomu.jp/works/
+################################
+
+################################
+## JSON抽出設定（__NEXT_DATA__ / Apollo State）
+##
+## JSON_SRC      JSONを含むscript要素のCSSセレクタ
+## JSON_URL_VAR  URLから変数を抽出 (変数名  正規表現)
+## JSON_ROOT     ルートパス（ドット区切り）
+## JSON_TITLE    タイトルのJSONパス
+## JSON_AUTHOR   著者のJSONパス（->はApollo State の __ref 解決）
+## JSON_HREF     エピソードオブジェクト配列のJSONパス（-> で終端するとref解決オブジェクトを返す）
+## JSON_HREF_TITLE 各エピソードのタイトルフィールド名
+## JSON_HREF_URL エピソードURLテンプレート（{varName} {id} で展開）
+################################
+
+JSON_SRC	script#__NEXT_DATA__
+JSON_URL_VAR	workId	/works/(\d+)
+JSON_ROOT	props.pageProps.__APOLLO_STATE__
+
+JSON_TITLE	Work:{workId}.title
+JSON_AUTHOR	Work:{workId}.author->activityName
+JSON_DESCRIPTION	Work:{workId}.introduction
+
+JSON_HREF	Work:{workId}.tableOfContents[*]->episodeUnions[*]->
+JSON_HREF_TITLE	title
+JSON_HREF_URL	https://kakuyomu.jp/works/{workId}/episodes/{id}
+
+################################
+## 各話ページの抽出設定（CSS）
+################################
+
+## 章タイトル（大見出し）
+CONTENT_CHAPTER	.chapterTitle:0
+## 話タイトル（中見出し）
+CONTENT_SUBTITLE	.widget-episodeTitle:0
+## 本文
+CONTENT_ARTICLE	.widget-episodeBody

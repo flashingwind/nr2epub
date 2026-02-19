@@ -1,0 +1,21 @@
+services:
+  nr2epub:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - nr2epub_cache:/app/.cache
+      - ./web:/app/web
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+
+volumes:
+  nr2epub_cache:
+    name: nr2epub-cache
+    external: true
