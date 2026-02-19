@@ -1,8 +1,26 @@
 # nr2epub
 
-小説家になろうの小説をEPUBに変換するWebアプリケーション
+小説家になろうの小説をEPUBに変換するWebアプリケーション。率直に言って問題がたくさんあります。
+プルリエルの受取り方がわからないので、そこのところよろしくお願いします。
+
+```
+docker compose up -d
+```
+
+この状態でhttp://localhost:3000/にアクセスすると動くかもしれない。不具合があったらAIで直してください。
+
+## ライセンス・クレジット: GPLv3
+
+(C) 2016 [hmdev](https://github.com/hmdev/).
+(C) 2025 [kyukyunyorituryo](https://github.com/kyukyunyorituryo).
+(C) 2026 flashingwind.
+本プログラムは[hmdev氏がはじめに作成したAozoraEpub3](https://github.com/hmdev/AozoraEpub3)を改造してメンテナンスしている[kyukyunyorituryo氏の配付しているAozoraEpub3](https://github.com/kyukyunyorituryo/AozoraEpub3/)の仕様を元にLLMによって生成させたもので、上記の両氏とは直接の関係はありません。
+いうまでもなく、あんまり上手くいってない部分はは私flashingwindのせいです(ライセンスの通り免責されるはずですが)。
+本プログラムはGNU General Public License v3.0(GPLv3)の元にご利用いただけます。
 
 ## 機能
+
+- 色々なウェブサイトがありますが便宜上「なろう」と呼びます
 - なろう小説のEPUB変換
 - Kindle等の電子書籍リーダーへのメール送信
 - AozoraEpub3互換の縦書きレイアウト

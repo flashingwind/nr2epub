@@ -1,7 +1,0 @@
-Validating using EPUB version 3.2 rules.
-ERROR(RSC-005): /tmp/epub-validation-3033207/test.epub/OEBPS/content.opf(32,75): Error while parsing file: spine element toc attribute must be set when an NCX is included in the publication
-
-Check finished with errors
-Messages: 0 fatals / 1 error / 0 warnings / 0 infos
-
-EPUBCheck completed
